@@ -3,7 +3,7 @@
 #
 # Script Name   : check_mk_telegram-notify.sh
 # Description   : Send Check_MK notifications by Telegram
-# Author        : https://github.com/filipnet/checkmk-telegram-notify
+# Author        : https://github.com/filipnet/checkmk-telegram-notify modified by ramonferre.com
 # License       : BSD 3-Clause "New" or "Revised" License
 # ======================================================================================
 # Telegram API Token
@@ -28,8 +28,16 @@ else
         CHAT_ID="${NOTIFY_PARAMETER_2}"
 fi
 
+# Topic (added by ramonferre.com)
+# Open "https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates" inside your Browser and create a topic, response a initial message topic and copy the message topic ID in the getUpdates page. 
+if [ -z ${NOTIFY_PARAMETER_3} == "none" ]; then
+        echo "No Telegram topic."
+else
+        TOPIC_ID="${NOTIFY_PARAMETER_3}"
+fi
+
 # Privacy settings to anonymize/masking IP addresses
-if [[ ${NOTIFY_PARAMETER_3} == "privacy" ]]; then
+if [[ ${NOTIFY_PARAMETER_4} == "privacy" ]]; then
         # IPv4 IP addresses
         if [ ${NOTIFY_HOST_ADDRESS_4} ]; then
                 slice="${NOTIFY_HOST_ADDRESS_4}"
@@ -101,8 +109,14 @@ fi
 MESSAGE+="%0AIPv4: ${NOTIFY_HOST_ADDRESS_4} %0AIPv6: ${NOTIFY_HOST_ADDRESS_6}%0A"
 MESSAGE+="${NOTIFY_SHORTDATETIME} | ${OMD_SITE}"
 
-# Send message to Telegram bot
-response=$(curl -S -s -q -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" -d chat_id="${CHAT_ID}" -d text="${MESSAGE}")
+# Send message to Telegram Chat-ID or Group-ID
+if [ -z ${NOTIFY_PARAMETER_3} == "none" ]; then
+        curl -S -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" -d chat_id="${CHAT_ID}" -d text="${MESSAGE}"
+else
+        # Send message to Telegram topic
+        curl -S -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" -d chat_id="${CHAT_ID}" -d message_thread_id="${TOPIC_ID}" -d text="${MESSAGE}"
+fi
+
 if [ $? -ne 0 ]; then
         echo "Not able to send Telegram message" >&2
         echo $response >&2
